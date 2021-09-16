@@ -1,37 +1,80 @@
 {
     "app-id": "com.google.AndroidStudio",
     "runtime": "org.freedesktop.Sdk",
-    "runtime-version": "20.08",
+    "runtime-version": "21.08",
     "sdk": "org.freedesktop.Sdk",
-    "command": "android-studio",
+    "sdk-extensions": ["org.freedesktop.Sdk.Extension.openjdk11"],
+    "command": "studio",
     "finish-args": [
         "--socket=x11",
-        "--socket=wayland",
-        "--socket=pulseaudio",
         "--socket=ssh-auth",
-        "--share=ipc",
         "--share=network",
+        "--share=ipc",
         "--device=all",
-        "--filesystem=host",
+        "--filesystem=~/android-rebuilds:ro",
+        "--filesystem=xdg-cache/tmp:create",
+        "--filesystem=xdg-cache/log:create",
+        "--filesystem=xdg-data/emulator:create",
+        "--filesystem=xdg-data/emulator/avd:create",
+        "--filesystem=xdg-data/gradle:create",
+        "--filesystem=xdg-data/plugins:create",
+        "--filesystem=xdg-data/system:create",
+        "--filesystem=xdg-data/config:create",
         "--filesystem=xdg-run/keyring",
-        "--allow=multiarch",
-        "--env=JAVA_HOME=/app/extra/android-studio/jre",
         "--talk-name=org.freedesktop.Notifications",
-        "--talk-name=org.freedesktop.secrets",
-        "--talk-name=org.freedesktop.Flatpak"
+        "--talk-name=org.freedesktop.secrets"
     ],
     "modules": [
+        {
+           "name" : "openjdk11",
+           "buildsystem" : "simple",
+           "build-commands" : [ "/usr/lib/sdk/openjdk11/installjdk.sh" ]
+        },
         {
             "name": "android-studio",
             "buildsystem": "simple",
             "build-commands": [
-                "install -D apply_extra /app/bin/apply_extra",
-                "install -D android-studio.sh /app/bin/android-studio",
-                "install -Dm644 com.google.AndroidStudio.png /app/share/icons/hicolor/128x128/apps/com.google.AndroidStudio.png",
-                "install -Dm644 com.google.AndroidStudio.appdata.xml /app/share/appdata/com.google.AndroidStudio.appdata.xml",
-                "install -Dm644 com.google.AndroidStudio.desktop /app/share/applications/com.google.AndroidStudio.desktop"
+                "install --mode=0755 --directory /app/android-studio/",
+                "cp -r android-studio/* /app/android-studio/",
+                "install -D --mode=0644 /app/android-studio/bin/studio.svg /app/share/icons/hicolor/scalable/apps/com.google.AndroidStudio.svg",
+                "install -D --mode=0755 studio --target-directory=/app/bin/",
+                "install -D --mode=0644 studio.properties --target-directory=/app/bin/",
+                "install -D --mode=0644 com.google.AndroidStudio.appdata.xml --target-directory=/app/share/appdata/",
+                "install -D --mode=0644 com.google.AndroidStudio.desktop --target-directory=/app/share/applications/"
             ],
             "sources": [
+                {
+                    "type": "archive",
+                    "dest-filename": "android-studio.tar.gz",
+                    "dest": "android-studio",
+                    "only-arches": [
+                        "x86_64"
+                    ],
+                    "url": "https://dl.google.com/dl/android/studio/ide-zips/2020.3.1.24/android-studio-2020.3.1.24-linux.tar.gz",
+                    "sha256": "f498ac0446b1fe32d9d5dda2b508049eb6732d9499619e2adf5ec9bb1166124d",
+                    "archive-type": "tar-gzip"
+                },
+                {
+                    "type": "script",
+                    "dest-filename": "studio",
+                    "commands": [
+                        "export JAVA_HOME=/app/jdk",
+                        "export JAVA_TOOL_OPTIONS=-Djava.io.tmpdir=${XDG_CACHE_HOME}/tmp",
+                        "export STUDIO_GRADLE_JDK=/app/jdk",
+                        "export GRADLE_USER_HOME=${XDG_DATA_HOME}/gradle",
+                        "export ANDROID_SDK_ROOT=~/android-rebuilds",
+                        "export TMPDIR=${XDG_RUNTIME_DIR}/app/${FLATPAK_ID}",
+                        "export ANDROID_EMULATOR_HOME=${XDG_DATA_HOME}/emulator",
+                        "export ANDROID_EMULATOR_USE_SYSTEM_LIBS=1",
+                        "export ANDROID_AVD_HOME=${XDG_DATA_HOME}/emulator/avd",
+                        "export STUDIO_PROPERTIES=/app/bin/studio.properties",
+                        "exec env /app/android-studio/bin/studio.sh \"$@\""
+                    ]
+                },
+                {
+                    "type": "file",
+                    "path": "studio.properties"
+                },
                 {
                     "type": "file",
                     "path": "com.google.AndroidStudio.desktop"
@@ -39,88 +82,6 @@
                 {
                     "type": "file",
                     "path": "com.google.AndroidStudio.appdata.xml"
-                },
-                {
-                    "type": "file",
-                    "path": "com.google.AndroidStudio.png"
-                },
-                {
-                    "type": "extra-data",
-                    "filename": "android-studio.tar.gz",
-                    "size": 980631631,
-                    "only-arches": [
-                        "x86_64"
-                    ],
-                    "url": "https://dl.google.com/dl/android/studio/ide-zips/2020.3.1.24/android-studio-2020.3.1.24-linux.tar.gz",
-                    "sha256": "f498ac0446b1fe32d9d5dda2b508049eb6732d9499619e2adf5ec9bb1166124d"
-                },
-                {
-                    "type": "script",
-                    "dest-filename": "apply_extra",
-                    "commands": [
-                        "tar xzf /app/extra/android-studio.tar.gz",
-                        "rm -f /app/extra/android-studio.tar.gz"
-                    ]
-                },
-                {
-                    "type": "script",
-                    "dest-filename": "android-studio.sh",
-                    "commands": [
-                        "exec env \"PATH=$PATH:$EXTRA_PATH\" /app/extra/android-studio/bin/studio.sh"
-                    ]
-                }
-            ]
-        },
-        {
-            "name": "git",
-            "make-args": [
-                "NO_TCLTK=1",
-                "INSTALL_SYMLINKS=1"
-            ],
-            "make-install-args": [
-                "NO_TCLTK=1",
-                "INSTALL_SYMLINKS=1"
-            ],
-            "sources": [
-                {
-                    "type": "archive",
-                    "url": "https://mirrors.edge.kernel.org/pub/software/scm/git/git-2.9.5.tar.xz",
-                    "sha256": "a4bea37ecb9a3fb5c0c8ef18c2f7eeaf8ccbcfec91f72f3bccfc6bf72a3e3902"
-                }
-            ]
-        },
-        {
-            "name": "git-lfs",
-            "buildsystem": "simple",
-            "build-commands": [
-                "PREFIX=$FLATPAK_DEST ./install.sh"
-            ],
-            "sources": [
-                {
-                    "type": "archive",
-                    "strip-components": 0,
-                    "url": "https://github.com/git-lfs/git-lfs/releases/download/v2.13.3/git-lfs-linux-amd64-v2.13.3.tar.gz",
-                    "sha256": "03197488f7be54cfc7b693f0ed6c75ac155f5aaa835508c64d68ec8f308b04c1"
-                }
-            ]
-        },
-        {
-            "name": "gpg",
-            "sources": [
-                {
-                    "type": "archive",
-                    "url": "https://www.gnupg.org/ftp/gcrypt/gnupg/gnupg-2.2.27.tar.bz2",
-                    "sha256": "34e60009014ea16402069136e0a5f63d9b65f90096244975db5cea74b3d02399"
-                }
-            ]
-        },
-        {
-            "name": "patch",
-            "sources": [
-                {
-                    "type": "archive",
-                    "url": "https://ftp.gnu.org/gnu/patch/patch-2.7.6.tar.gz",
-                    "sha256": "8cf86e00ad3aaa6d26aca30640e86b0e3e1f395ed99f189b06d4c9f74bc58a4e"
                 }
             ]
         },
